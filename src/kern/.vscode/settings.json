@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "seek.h": "c",
+        "limits.h": "c"
+    }
+}

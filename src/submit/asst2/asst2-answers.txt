@@ -1,0 +1,38 @@
+
+ASST2 STEP 2
+
+1. When the thread exits it first detatches from the process by calling proc_remthread, which turns off interrupts on the local cpu while changing t_proc. It
+   then checks the stack guard band by calling thread_checkstack, which can also catch stack overflow. It will then call the splhigh() function to turn off interrupts
+   and finall make the thread into a zombie. 
+
+2. Context switches are handled by the funciton thread_switch() under thread.c, along with switchframe_switch() which is the function that performs the switching.
+
+3. Ready: Lock available for the thread and ready to be run
+   Running: Thread is running
+   Sleeping: Sleeping
+   Zombie: Thread is no longer running but not deleted
+
+4. Turning interrupts off mean that the CPU would be unable to swtich processes and a process can access a variable knowing that another process won't be able to 
+   access it. It is done by turning SPL to high by running splhigh(). It is important to turn off interrupts in the thread subsystem code to ensure that code execution
+   or context switches can be done without interrupts and that it can exit properly. 
+
+5. The thread will first get wakeup from the wait channel by wchan_wakeone or wchan_wakeall. It then calls threadlist_remhead and remove the head of the 
+   threadlist and then calls thread_make_runnable to make it ready to be run again. 
+
+6. The function thread_switch decides the next thread to run. It will set the thread to a new state indicated by the caller. If NEWSTATE is S_SLEEP, the 
+   thread is queued on the wait channel. It then calls the function threadlist_remhead() as described previously to allow the next thread to run. 
+
+7. The next thread to run is decided by priority using the scheduler() function. The function is called periodically from hardclock(). It should reshuffle
+   the current CPU's run queue by job priority.
+
+8. The hardware timer is incharge of scheduling and migrating threads. This is done by the hardlock funtion calling the schedule() and thread_consider_migration() 
+   function periodically. As explained above, the schedule() function will reshuffle the current CPU's run queue by job priority, and the thread_consider_migration()
+   function is in charge of if the current CPU is busy and other CPUs are idle, or less busy, it should move threads across to those other other CPUs. 
+
+9. While the lock is unavailable, the thread will be placed into the wait channel and put to sleep with wchan_sleep(). The function first yield the cpu to another 
+   process, and go to sleep, on the specified wait channel WC, whose associated spinlock is LK. The function wchan_wakeone() would then wake up one thread sleeping 
+   in the wait channel. 
+
+10. The implementation uses spinlock to ensure that this doesn't happen. It make sure that only one thread is being processed at a time. This means that during 
+    the process of a thread being put into the wait channel to sleep, another thread cannot come and wake up that thread. This then ensures the problem described
+    in the question. 

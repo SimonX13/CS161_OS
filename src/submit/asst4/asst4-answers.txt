@@ -1,0 +1,89 @@
+1. What are the ELF magic numbers?
+ELF magic numbers are the first couple of bytes in a file. They are used to make sure that the file is executable for our processor type
+As shown is elf.h, there are four
+magic numbers. They are :
+EI_MAG0  0, \177
+EI_MAG1  1, 'E'
+EI_MAG2  2, 'L'
+EI_MAG3  3, 'F'
+
+2. What is the difference between UIO_USERISPACE and UIO_USERSPACE? When should one use UIO_SYSSPACE instead?
+UIO_USERSPACE is a bit in the instance of the uio structure that implies data transfer between user and kernel as it is not executable.
+UIO_USERISPACE is a bit in the instance of the uio structure that implies code transfer between user and kernel as it is executable.
+
+3. Why can the struct uio that is used to read in a segment be allocated on the stack in load_segment() (i.e., where does the memory read actually go)?
+According to uio.h, uio is an abstraction encapsulating a memory block, some metadata about it, and also a cursor position associated
+with working through it. The uio structure is used to manage blocks of data moved around by the kernel.
+
+It can be allocated on the stack in load_segment because it is stored on virtual address VADDR. The segment on disk is located
+at file offset OFFSET and has length FILESIZE. 
+
+4. In runprogram(), why is it important to call vfs_close() before going to usermode?
+In this function, vfs_open was called initially to open a file. After we are done with the file, 
+vfs_close() will free up memory space by reference counting garbage collection of the struct vnode which 
+is a abstract of the low level file.
+
+5. What function forces the processor to switch into usermode? Is this function machine dependent?
+The function mips_usermode in trap.c forces the processor to switch to user mode. It is machine dependent because it
+uses assembly code. 
+
+6. In what file are copyin and copyout defined? memmove? Why can't copyin and copyout be implemented as simply as memmove?
+Copyin and copyout are defined in os161/src/kern/vm/copyinout.c
+Memmove is defined in src/common/libc/string/memmove.c
+Copyin and copyout are transfering data between two levels of authority like from users to kernel or kernel to user, which involves
+two separate isolated memory spaces. For example, copyin and copyout need to copy pointer of data and value of data because the function 
+needs to ensure that the value copied into kernel is valid in terms of value and address space, like if the pointer contains data that lies on
+userspace and kernel which across the boundry line then this copy operation cannot succeed. 
+However, memmove is just a C standard function that copies a block of memory and handling overlapping regions correctly. It does not need to 
+handle copying data between two privilege levels.
+
+7. What (briefly) is the purpose of userptr_t?
+The userptr_t is a pointer to a one-byte struct, so it won't get mixed with other pointers. It points to userspace. 
+
+8. What is the numerical value of the exception code for a MIPS system call?
+Defined in the trapframe.h
+#define EX_SYS    8    /* Syscall */
+Hence it is 8.
+
+9. How many bytes is an instruction in MIPS? (Answer this by reading syscall() carefully, not by looking somewhere else.)
+According to line 141 in syscall.c, it says advance the program counter to avoid restarting the syscall over and over again.
+From this, it can be logically deduced that the instructions are 4 bytes 
+
+10. Why do you "probably want to change" the implementation of kill_curthread()?
+I should add error handling into the function to prevent panic and actually kill the current thread
+without killing the kernel directly. 
+Currently, it just print outs the error details and panic.
+
+11. What would be required to implement a system call that took more than 4 arguments?
+According to the syscall.c, when we run out of registers, further arguments will be fetched from the user level stack,
+starting at sp+16 to skip over the slots for the registered values, with copyin().
+
+12. What is the purpose of the SYSCALL macro?
+SYSCALL macro is used in assembly code as os161 program is processed by the C preprocessor (cpp).
+It is the standard way for kernel code to define a system call.
+In syscall.S, it loads the SYSCALL’s sym and num to dispatch to the correct register before calling syscall().
+
+13. What is the MIPS instruction that actually triggers a system call? (Answer this by reading the source in this directory, not looking somewhere else.)
+The instruction that actually triggers a system call is the the line syscall written in assembly on line 84 in syscalls-mips.S 
+
+14. After reading syscalls-mips.S and syscall.c, you should be prepared to answer the following question: OS/161 supports 64-bit values; lseek() takes and returns a 64-bit offset value. Thus, lseek() takes a 32-bit file handle (arg0), a 64-bit offset (arg1), a 32-bit whence (arg2), and needs to return a 64-bit offset value. In void syscall(struct trapframe *tf) where will you find each of the three arguments (in which registers) and how will you return the 64-bit offset?
+Found solution from comment in syscall.c.
+Four args in a0-a3, the other args on the stack.
+So arg0 is store a0, arg1 is store a1, arg2 in a2, arg3 in sp+16.
+On successful return, zero in a3 register; return value in v0
+v0 and v1 for a 64-bit return value.
+On an error return, the error code is passed back in the v0 register, 
+and the a3 register is set to 1 to indicate failure.
+
+15. As you were reading the code in runprogram.c and loadelf.c, you probably noticed how the kernel manipulates the files. Which kernel function is called to open a file? Which macro is called to read the file? What about to write a file? Which data structure is used in the kernel to represent an open file? 
+In runprogram.c, the function vfs_open is called to open the file
+In loadelf.c, the function VOP_READ is called to read the file
+Also in loadelf.c, the function VOP_WRITE is called to read the file
+In the file vnode.h, the structure vnode is used to represent an open file 
+
+16. What is the purpose of VOP_INCREF and VOP_DECREF?
+These are reference count manipulation (handled above filesystem level).
+VOP_INCREF will increment refcount which is a field inside its vnode structure.
+VOP_DECREF will decrement refcount.
+The purpose is keep track of how many reference is pointing towards this file, and when the refernce counting 
+reaches zero, the program will do garabage collection freeing up the memory space.

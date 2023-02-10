@@ -1,0 +1,169 @@
+STEP 4
+
+1. 
+sys161: System/161 release 2.0.3, compiled Aug 10 2015 13:31:07
+
+OS/161 base system version 1.99.08
+Copyright (c) 2000, 2001-2005, 2008-2011, 2013, 2014
+   President and Fellows of Harvard College.  All rights reserved.
+
+Put-your-group-name-here's system version 0 (DUMBVM #1)
+
+292k physical memory available
+Device probe...
+lamebus0 (system main bus)
+emu0 at lamebus0
+ltrace0 at lamebus0
+ltimer0 at lamebus0
+beep0 at ltimer0
+rtclock0 at ltimer0
+lrandom0 at lamebus0
+random0 at lrandom0
+lhd0 at lamebus0
+lhd1 at lamebus0
+lser0 at lamebus0
+con0 at lser0
+
+cpu0: MIPS/161 (System/161 2.x) features 0x0
+
+2.
+commit dc96d089aa7d867b3a2d0a62a45949a778aedec7 (HEAD -> master, tag: asst1-start, origin/master)
+Author: Hao-Chih Huang <haochih@ssh-linux3.ece.ubc.ca>
+Date:   Tue Sep 13 09:43:28 2022 -0700
+
+    Initial commit of os161 for CPEN331
+
+3.
+asst1-start
+
+
+STEP 5
+
+Question 1:
+By looking at the file exception-mips1.S, which can be found in 
+~/os161/src/kern/arch/mips/locore/exception-mips1.S
+If it's an exception triggered by fault then the first line is 68. If it's just a 
+general exception, the first line is line 86. The control would then get transferred
+to the kernel. 
+Trap and interrupt are the same thing, trap is just an interrupt invoked by syscall
+
+Question 2: In line 90 in file dumpsfs.c under ~/os161/src/userland/sbin/dumpsfs/dumpsfs.c, 
+it is found under userland hence it's a user program. it uses the printf function. 
+printf calls the write systemcall therefore causes trap
+
+Question 3: Because the content of libc is different. Userland is mainly for user interactions, whereas
+common is used by both user and kernel. Also, user can make changes to userland, and
+these changes will disappear when the user changes. However common will stay the same. 
+
+Question 4: One thing the configure command configures is the OS/161 source tree. Another 
+thing the configure command configures is the OS/161 kernel. When there are new files added 
+to the system, files such as conf.kern has to be edited first, followed by rerunning the config script.
+
+Question 5: A function becomes machine dependent when its codes relies on hardware functions or when it 
+uses specific registers. For example memory barriers described in membar.h under mips/include/, it works 
+with memory and registers, hence makes it machine dependent. It is important to maintain this separation
+because these functions are directly related to the kernel and is at a different priviledge level compared
+many other codes. When the computer changes user, these machine dependent codes can then stay the same,
+whereas files such as user include files might be changed.
+
+Question 6: In trapframe.h from mips/include/, we can see that the struct trapframe consists 37 registers,
+each of size 32 bits. Therefore 32 bits x 37 = 1184bits = 148 bytes. Tapeframe is 148 bytes large. 
+It is this size so it is big enough for it to call mips_trap to identify what type of exception it is. 
+
+Question 7: The config script is used to configure the kernel. Therefore, if a modification is intended
+to be done to the kernel, or the config script is being edited, we need to re-run. 
+
+Question 8: Bmake depend should be run if any of the header files in the kern/compile/DUMBVM directory are 
+being edited, or if they are being re-configured by the config script. 
+
+Question 9: When ever changes are made to source files under the DUMBVM directory, bmake should be run to 
+generate the new configured kernel binary, and then bmake install to install the kernel into root directory
+
+Question 10: The question says when I booted my kernel, means I should probably edit the files under 
+kern/main, as that is where the kernel is initialized and where its main functions are implemented. 
+
+1. go to main.c under kern/main/main.c 
+
+2. under line 72 where the Harvard copyright messages are, add 
+
+static const char hello_world[] =
+    "Hello world!\n";
+
+3. under line 103 where Harvard copyright message is printed, add
+	kprintf("%s", hello_world);
+
+4. go to cd ~/os161/src/kern/compile/DUMBVM and re-compile the kernel 
+
+Question 11: This is because I am working with OS161 on a UBC ece virtual machine via ssh, therefore 
+OS161 cannot access any information I have on my own machine. 
+
+Question 12: According to crt0.S under userland/lib/crt0/mips, when the exit function is being called,
+the return value getes moved to s0 from v0, and then to a0 so it's the argument to exit. 
+
+Question 13: In syscall.h under kern/include/kern, add a macro for the syscall by adding a #define along
+with a unique number. Then add the function of the syscall to syscall.c under kern/arch/mips/syscall. 
+Add the file for the function to the src/kern/syscall directory. 
+rerun the config script and rerun bmake and bmake install for the changes to take place
+
+
+STEP 7 
+
+Question 14: The first function executed after os161 startup is strcpy.c 
+under libc/string/strcpy.c 
+
+Question 15: The first assembly code executed is Start.S 
+__start () at ../../arch/sys161/main/start.S:54
+
+Question 16: 
+Num     Type           Disp Enb Address    What
+1       breakpoint     keep y   0x800139fc in kmain at ../../main/main.c:214
+2       breakpoint     keep y   0x80014a2c in menu at ../../main/menu.c:697
+
+Question 17: By setting a breakpoint at kmain and backtracing to the function that call it, I found
+that kmain is called in start.S
+
+Breakpoint 1 at 0x800139fc: file ../../main/main.c, line 214.
+(gdb) bt n
+#0  __start () at ../../arch/sys161/main/start.S:54
+
+
+Question 18: The instruction that calles the kernel main function is jal kmain. This is done 
+by stepping through the start.S code. 
+
+191	   mtc0 t0, c0_status		/* set status register */
+(gdb) 
+201	   mtc0 $0, c0_context
+(gdb) 
+209	   la gp, _gp
+(gdb) s
+215	   jal kmain
+(gdb) s
+kmain (arguments=0x80035c60 "") at ../../main/main.c:214
+warning: Source file is more recent than executable.
+214		boot();
+
+19: The following functions are called during early initialization
+(gdb) n
+112		ram_bootstrap();
+(gdb) n
+113		proc_bootstrap();
+(gdb) n
+114		thread_bootstrap();
+(gdb) n
+115		hardclock_bootstrap();
+(gdb) n
+116		vfs_bootstrap();
+(gdb)
+117		kheap_nextgeneration();
+(gdb) 
+
+20: cannot print contents of the bootcpu variable 
+(gdb) p *bootcpu
+No symbol "bootcpu" in current context.
+
+21: Cannot access memory at address 0x80000
+
+22: $1 = {arr = {v = 0x0, num = 0, max = 0}}
+
+23: $3 = {arr = {v = 0x80039fe0, num = 1, max = 4}}
+
